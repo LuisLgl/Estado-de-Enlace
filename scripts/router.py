@@ -208,7 +208,6 @@ class LSDB:
         # Atualiza as rotas na tabela de roteamento
         self.atualizar_rotas()
 
-
 class HelloSender:
     """
     Classe responsável por criar e enviar pacotes HELLO periodicamente para vizinhos em uma rede
@@ -655,7 +654,6 @@ def create_socket():
     Cria e retorna um socket UDP IPv4
     """
     return socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
 
 if (__name__ == "__main__"):
     # Retorna o nome do roteador, definido por uma variável de ambiente
