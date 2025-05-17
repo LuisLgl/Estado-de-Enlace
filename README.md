@@ -1,2 +1,2 @@
-# Estado-de-Enlace
-Referente a primeira nota de Redes de Computadores 2
+# Rede-De-Petri
+Trabalho relacionado a primeira avaliação de Redes de Computadores 2
