@@ -657,7 +657,6 @@ def create_socket():
     return socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
-
 if (__name__ == "__main__"):
     # Retorna o nome do roteador, definido por uma variável de ambiente
     router_id = os.getenv("CONTAINER_NAME")
