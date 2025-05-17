@@ -8,6 +8,206 @@ import subprocess
 import ipaddress
 import datetime
 
+class LSDB:
+    """
+    Representa o Banco de Dados de Estado de Enlace (Link State Database - LSDB), responsável por armazenar as informações recebidas via LSA (Link State Advertisement) e calcular os melhores caminhos na rede utilizando o algoritmo de Dijkstra
+    """
+
+    __slots__ = [
+        "_tabela", "_router_id", "_roteamento", "_neighbors_ip", "_tempo_inicio", "_quantidade_roteadores"
+    ]
+
+    def __init__(self, router_id: str, neighbors_ip: dict[str, str]):
+        """
+        Inicializa um novo LSDB
+
+        Args: 
+            router_id (str): Identificador único do roteador
+            neighbors_ip (dict[str, str]): Dicionário onde a chave é o ID do vizinho e o valor é seu IP
+        """
+        self._router_id = router_id
+        self._neighbors_ip = neighbors_ip
+        # Registro das informações recebidas pelo LSA
+        self._tabela = {}
+        # Dicionário que mantém registro dos roteadores de destino e os próximos saltos para alcançá-los
+        self._roteamento = {}
+        self._tempo_inicio = time.time()
+        self._quantidade_roteadores = 0
+
+    def criar_entrada(self, sequence_number: int, timestamp: float, addresses: list[str], links: dict[str, int]) -> dict:
+        """
+        Cria uma entrada na tabela baseado nas informações do pacote
+
+        Args:
+            sequence_number (int): Número de sequência
+            timestamp (float): Tempo de criação do pacote
+            addresses (list[str]): Lista com todos os endereços IP das interfaces
+            links (dict[str, int]): Dicionário onde a chave é o ID do vizinho e o valor é o custo para alcançá-lo
+
+        Returns: 
+            dict: Dicionário com os dados da entrada
+        """
+        return {
+            "sequence_number": sequence_number,
+            "timestamp": timestamp,
+            "addresses": addresses,
+            "links": links,
+        }
+
+    def atualizar(self, pacote: dict) -> bool:
+        """
+        Atualiza a tabela de roteamento após receber um pacote LSA válido
+
+        Args:
+            pacote (dict): Pacote LSA no formato de dicionário
+
+        Returns:
+            bool: Um booleano indicando se a tabela foi atualizada ou não
+        """
+        # Extrai o ID do emissor e número de sequência do pacote
+        router_id = pacote["router_id"]
+        sequence_number = pacote["sequence_number"]
+
+        # Retorna a entrada (caso exista) do emissor na LSDB
+        entrada = self._tabela.get(router_id)
+
+        # O pacote é inválido quando já há uma entrada "igual ou mais antiga" do que o pacote recém-chegado
+        if (entrada and sequence_number <= entrada["sequence_number"]):
+            return False
+
+        # Cria uma entrada na tabela
+        self._tabela[router_id] = self.criar_entrada(
+            sequence_number, pacote["timestamp"], pacote["addresses"], pacote["links"])
+
+        # Verificação se a rede convergiu (são conhecidas rotas para todos os roteadores conhecidos)
+        quantidade_roteadores = len(self._tabela.keys())
+        # Verifica se algum roteador novo foi conhecido
+        if (quantidade_roteadores > self._quantidade_roteadores):
+            # Verifica se há caminhos conhecidos para todos os roteadores
+            if (quantidade_roteadores == (len(self._roteamento) + 1)):
+                # Atualiza a quantidade de roteadores conhecidos
+                self._quantidade_roteadores = quantidade_roteadores
+                tempo_convergencia = time.time() - self._tempo_inicio
+                data_formatada = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+
+                try:
+                    with open("/compartilhado/convergencia.txt", "a") as file:
+                        file.write(
+                            f"[{data_formatada}] {self._router_id}: {tempo_convergencia:.2f} segundos [{quantidade_roteadores} roteadores]\n")
+                except Exception as e:
+                    print2(
+                        f"[ERRO] Falha ao escrever tempo de convergência: {e}")
+
+        self.recalcular_rotas(pacote["links"].keys())
+
+        return True
+
+    def dijkstra(self) -> dict:
+        """
+        Calcula o caminho com menor custo entre o roteador atual e todos os demais roteadores conhecidos
+
+        Returns:
+            dict: Dicionário com a chave sendo o roteador de destino e o valor sendo o roteador anterior a ele
+        """
+        distancias = {}
+        caminhos = {}
+        marcados = {}
+
+        # Inicializando os dicionários
+        for roteador in self._tabela.keys():
+            distancias[roteador] = float('inf')
+            caminhos[roteador] = None
+
+        distancias[self._router_id] = 0
+
+        while len(marcados) < len(self._tabela):
+            roteador = None
+            menor = float('inf')
+            # Busca pelo menor roteador não marcado
+            for no, custo in distancias.items():
+                if (no not in marcados and custo < menor):
+                    roteador = no
+                    menor = custo
+
+            if (roteador is None):
+                break
+
+            marcados[roteador] = True
+            vizinhos = self._tabela[roteador]["links"]
+
+            # Atualização dos menores caminhos
+            for vizinho, custo in vizinhos.items():
+                if (vizinho not in marcados):
+                    custo_total = custo + distancias[roteador]
+                    if (custo_total < distancias[vizinho]):
+                        distancias[vizinho] = custo_total
+                        caminhos[vizinho] = roteador
+
+        return caminhos
+
+    def atualizar_proximo_pulo(self, caminhos: dict):
+        """
+        Percorre os menores caminhos encontrados para estabelecer quem será o próximo pulo para cada roteador, partindo do roteador atual
+
+        Args:
+            caminhos (dict): Dicionário com a chave sendo o roteador de destino e o valor sendo o roteador anterior a ele
+        """
+        for destino in caminhos.keys():
+            if (destino != self._router_id):
+                pulo = destino
+                while (pulo is not None and caminhos[pulo] != self._router_id):
+                    pulo = caminhos[pulo]
+                self._roteamento[destino] = pulo
+
+        self._roteamento = dict(sorted(self._roteamento.items()))
+
+    def atualizar_rotas(self):
+        """
+        Atualiza as rotas na tabela de roteamento, baseado no próximo pulo encontrado pela função atualizar_proximo_pulo
+        """
+        for roteador_destino, roteador_gateway in list(self._roteamento.items()):
+            # Caso não seja o próprio roteador
+            if (roteador_destino != self._router_id):
+                # Ignora o roteador caso o caminho não seja conhecido
+                if (roteador_gateway not in self._neighbors_ip):
+                    print2(
+                        f"[LSDB] Ignorando rota para {roteador_destino} via {roteador_gateway}: gateway não conhecido ainda")
+                else:
+                    # Atualiza a rota associando todos os ips do vizinho ao próximo pulo
+                    for ip_destino in self._tabela[roteador_destino]["addresses"]:
+                        ip_gateway = self._neighbors_ip[roteador_gateway]
+
+                        comando = ["ip", "route", "replace",
+                                   ip_destino, "via", ip_gateway]
+                        try:
+                            subprocess.run(comando, check=True)
+                            print2(
+                                f"Rota adicionada: {ip_destino} -> {ip_gateway} [{roteador_gateway}]")
+                        except subprocess.CalledProcessError as e:
+                            print2(
+                                f"[ERRO] Falha ao adicionar rota: [{comando}] -> [{e}] ({self._router_id} -> {roteador_gateway})")
+
+    def recalcular_rotas(self, roteadores_observados: list[str]):
+        """
+        Recalcula as rotas com dijkstra e aplica na tabela de roteamento
+
+        Args:
+            roteadores_observados (list[str]): Lista de roteadores observados
+        """
+        # Verifica se há um roteador "desconhecido" presente nos roteadores observados, criando uma entrada para o mesmo
+        for vizinho in roteadores_observados:
+            if (vizinho not in self._tabela):
+                print2(
+                    f"[LSDB] Descoberto novo roteador: {vizinho}")
+                self._tabela[vizinho] = self.criar_entrada(-1, 0, [], {})
+
+        # Calcula o menor caminho para se chegar em cada um dos outros roteadores
+        caminhos = self.dijkstra()
+        # Percorre os menores caminhos encontrados para estabelecer quem será o próximo pulo
+        self.atualizar_proximo_pulo(caminhos)
+        # Atualiza as rotas na tabela de roteamento
+        self.atualizar_rotas()
+
 
 class HelloSender:
     """
@@ -455,208 +655,6 @@ def create_socket():
     Cria e retorna um socket UDP IPv4
     """
     return socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-
-class LSDB:
-    """
-    Representa o Banco de Dados de Estado de Enlace (Link State Database - LSDB), responsável por armazenar as informações recebidas via LSA (Link State Advertisement) e calcular os melhores caminhos na rede utilizando o algoritmo de Dijkstra
-    """
-
-    __slots__ = [
-        "_tabela", "_router_id", "_roteamento", "_neighbors_ip", "_tempo_inicio", "_quantidade_roteadores"
-    ]
-
-    def __init__(self, router_id: str, neighbors_ip: dict[str, str]):
-        """
-        Inicializa um novo LSDB
-
-        Args: 
-            router_id (str): Identificador único do roteador
-            neighbors_ip (dict[str, str]): Dicionário onde a chave é o ID do vizinho e o valor é seu IP
-        """
-        self._router_id = router_id
-        self._neighbors_ip = neighbors_ip
-        # Registro das informações recebidas pelo LSA
-        self._tabela = {}
-        # Dicionário que mantém registro dos roteadores de destino e os próximos saltos para alcançá-los
-        self._roteamento = {}
-        self._tempo_inicio = time.time()
-        self._quantidade_roteadores = 0
-
-    def criar_entrada(self, sequence_number: int, timestamp: float, addresses: list[str], links: dict[str, int]) -> dict:
-        """
-        Cria uma entrada na tabela baseado nas informações do pacote
-
-        Args:
-            sequence_number (int): Número de sequência
-            timestamp (float): Tempo de criação do pacote
-            addresses (list[str]): Lista com todos os endereços IP das interfaces
-            links (dict[str, int]): Dicionário onde a chave é o ID do vizinho e o valor é o custo para alcançá-lo
-
-        Returns: 
-            dict: Dicionário com os dados da entrada
-        """
-        return {
-            "sequence_number": sequence_number,
-            "timestamp": timestamp,
-            "addresses": addresses,
-            "links": links,
-        }
-
-    def atualizar(self, pacote: dict) -> bool:
-        """
-        Atualiza a tabela de roteamento após receber um pacote LSA válido
-
-        Args:
-            pacote (dict): Pacote LSA no formato de dicionário
-
-        Returns:
-            bool: Um booleano indicando se a tabela foi atualizada ou não
-        """
-        # Extrai o ID do emissor e número de sequência do pacote
-        router_id = pacote["router_id"]
-        sequence_number = pacote["sequence_number"]
-
-        # Retorna a entrada (caso exista) do emissor na LSDB
-        entrada = self._tabela.get(router_id)
-
-        # O pacote é inválido quando já há uma entrada "igual ou mais antiga" do que o pacote recém-chegado
-        if (entrada and sequence_number <= entrada["sequence_number"]):
-            return False
-
-        # Cria uma entrada na tabela
-        self._tabela[router_id] = self.criar_entrada(
-            sequence_number, pacote["timestamp"], pacote["addresses"], pacote["links"])
-
-        # Verificação se a rede convergiu (são conhecidas rotas para todos os roteadores conhecidos)
-        quantidade_roteadores = len(self._tabela.keys())
-        # Verifica se algum roteador novo foi conhecido
-        if (quantidade_roteadores > self._quantidade_roteadores):
-            # Verifica se há caminhos conhecidos para todos os roteadores
-            if (quantidade_roteadores == (len(self._roteamento) + 1)):
-                # Atualiza a quantidade de roteadores conhecidos
-                self._quantidade_roteadores = quantidade_roteadores
-                tempo_convergencia = time.time() - self._tempo_inicio
-                data_formatada = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-
-                try:
-                    with open("/compartilhado/convergencia.txt", "a") as file:
-                        file.write(
-                            f"[{data_formatada}] {self._router_id}: {tempo_convergencia:.2f} segundos [{quantidade_roteadores} roteadores]\n")
-                except Exception as e:
-                    print2(
-                        f"[ERRO] Falha ao escrever tempo de convergência: {e}")
-
-        self.recalcular_rotas(pacote["links"].keys())
-
-        return True
-
-    def dijkstra(self) -> dict:
-        """
-        Calcula o caminho com menor custo entre o roteador atual e todos os demais roteadores conhecidos
-
-        Returns:
-            dict: Dicionário com a chave sendo o roteador de destino e o valor sendo o roteador anterior a ele
-        """
-        distancias = {}
-        caminhos = {}
-        marcados = {}
-
-        # Inicializando os dicionários
-        for roteador in self._tabela.keys():
-            distancias[roteador] = float('inf')
-            caminhos[roteador] = None
-
-        distancias[self._router_id] = 0
-
-        while len(marcados) < len(self._tabela):
-            roteador = None
-            menor = float('inf')
-            # Busca pelo menor roteador não marcado
-            for no, custo in distancias.items():
-                if (no not in marcados and custo < menor):
-                    roteador = no
-                    menor = custo
-
-            if (roteador is None):
-                break
-
-            marcados[roteador] = True
-            vizinhos = self._tabela[roteador]["links"]
-
-            # Atualização dos menores caminhos
-            for vizinho, custo in vizinhos.items():
-                if (vizinho not in marcados):
-                    custo_total = custo + distancias[roteador]
-                    if (custo_total < distancias[vizinho]):
-                        distancias[vizinho] = custo_total
-                        caminhos[vizinho] = roteador
-
-        return caminhos
-
-    def atualizar_proximo_pulo(self, caminhos: dict):
-        """
-        Percorre os menores caminhos encontrados para estabelecer quem será o próximo pulo para cada roteador, partindo do roteador atual
-
-        Args:
-            caminhos (dict): Dicionário com a chave sendo o roteador de destino e o valor sendo o roteador anterior a ele
-        """
-        for destino in caminhos.keys():
-            if (destino != self._router_id):
-                pulo = destino
-                while (pulo is not None and caminhos[pulo] != self._router_id):
-                    pulo = caminhos[pulo]
-                self._roteamento[destino] = pulo
-
-        self._roteamento = dict(sorted(self._roteamento.items()))
-
-    def atualizar_rotas(self):
-        """
-        Atualiza as rotas na tabela de roteamento, baseado no próximo pulo encontrado pela função atualizar_proximo_pulo
-        """
-        for roteador_destino, roteador_gateway in list(self._roteamento.items()):
-            # Caso não seja o próprio roteador
-            if (roteador_destino != self._router_id):
-                # Ignora o roteador caso o caminho não seja conhecido
-                if (roteador_gateway not in self._neighbors_ip):
-                    print2(
-                        f"[LSDB] Ignorando rota para {roteador_destino} via {roteador_gateway}: gateway não conhecido ainda")
-                else:
-                    # Atualiza a rota associando todos os ips do vizinho ao próximo pulo
-                    for ip_destino in self._tabela[roteador_destino]["addresses"]:
-                        ip_gateway = self._neighbors_ip[roteador_gateway]
-
-                        comando = ["ip", "route", "replace",
-                                   ip_destino, "via", ip_gateway]
-                        try:
-                            subprocess.run(comando, check=True)
-                            print2(
-                                f"Rota adicionada: {ip_destino} -> {ip_gateway} [{roteador_gateway}]")
-                        except subprocess.CalledProcessError as e:
-                            print2(
-                                f"[ERRO] Falha ao adicionar rota: [{comando}] -> [{e}] ({self._router_id} -> {roteador_gateway})")
-
-    def recalcular_rotas(self, roteadores_observados: list[str]):
-        """
-        Recalcula as rotas com dijkstra e aplica na tabela de roteamento
-
-        Args:
-            roteadores_observados (list[str]): Lista de roteadores observados
-        """
-        # Verifica se há um roteador "desconhecido" presente nos roteadores observados, criando uma entrada para o mesmo
-        for vizinho in roteadores_observados:
-            if (vizinho not in self._tabela):
-                print2(
-                    f"[LSDB] Descoberto novo roteador: {vizinho}")
-                self._tabela[vizinho] = self.criar_entrada(-1, 0, [], {})
-
-        # Calcula o menor caminho para se chegar em cada um dos outros roteadores
-        caminhos = self.dijkstra()
-        # Percorre os menores caminhos encontrados para estabelecer quem será o próximo pulo
-        self.atualizar_proximo_pulo(caminhos)
-        # Atualiza as rotas na tabela de roteamento
-        self.atualizar_rotas()
-
 
 
 
