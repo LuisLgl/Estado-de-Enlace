@@ -5,6 +5,8 @@ services:
       context: .
       dockerfile: Dockerfile.router
     container_name: r1
+    volumes:
+      - ./scripts:/shared_data
     environment:
       CONTAINER_NAME: r1
       CUSTO_r1_r2_net: '1'
@@ -50,6 +52,8 @@ services:
       context: .
       dockerfile: Dockerfile.router
     container_name: r2
+    volumes:
+      - ./scripts:/shared_data
     environment:
       CONTAINER_NAME: r2
       CUSTO_r1_r2_net: '1'
@@ -99,6 +103,8 @@ services:
       context: .
       dockerfile: Dockerfile.router
     container_name: r3
+    volumes:
+      - ./scripts:/shared_data
     environment:
       CONTAINER_NAME: r3
       CUSTO_r2_r3_net: '3'
@@ -145,6 +151,8 @@ services:
       context: .
       dockerfile: Dockerfile.router
     container_name: r4
+    volumes:
+      - ./scripts:/shared_data
     environment:
       CONTAINER_NAME: r4
       CUSTO_r2_r4_net: '3'
@@ -192,7 +200,7 @@ services:
       CUSTO_r1_r5_net: '5'
       CUSTO_r3_r5_net: '2'
     volumes:
-      - ./scripts:/scripts
+      - ./scripts:/shared_data
     networks:
       r5_hosts_net:
         ipv4_address: 192.168.10.2

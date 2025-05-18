@@ -19,6 +19,9 @@ class LSDB:
         self.db: Dict[str, Dict] = {}
         self.topology: Dict[str, Dict[str, int]] = defaultdict(dict)
         self.last_update_time = time.time()
+        self.convergence_data = []  # Lista para armazenar dados de convergência parcial
+        self.start_time = time.time()
+        self.quantidade_routers = 0
         
     def update(self, lsa: Dict) -> bool:
         """Atualiza o LSDB com um novo LSA, retorna True se houve mudança"""
@@ -39,6 +42,11 @@ class LSDB:
             }
             self.db[origin] = normalized
             self._rebuild_topology()
+            quantidade_routers = len(self.db)
+            # Registra dados de convergência parcial
+            current_time = time.time() - self.start_time
+            num_routers = len(self.db)
+            self.convergence_data.append((current_time, num_routers))
             return True
         return False
     
@@ -270,6 +278,8 @@ class NeighborDiscoveryProtocol:
         self.lsa_sender = LSASender(self)
         self.running = False
 
+
+
     def get_link_cost_between(self, router1: str, router2: str) -> int:
         """Obtém o custo do link a partir de variáveis de ambiente"""
         cost = os.getenv(f"CUSTO_{router1}_{router2}_net")
@@ -285,8 +295,12 @@ class NeighborDiscoveryProtocol:
         """Inicia o protocolo"""
         self.running = True
         self.interface_ips = self._get_interfaces_and_ips()
-        print(f"[{self.container_name}] Starting with IPs: {self.interface_ips}")
-        
+
+        # Inicializa o arquivo de convergência
+        self.converged = False
+        self.convergence_start_time = None
+        self.convergence_time = None
+
         # Inicia threads
         self.hello_sender.start()
         threading.Thread(target=self._listen_loop, daemon=True).start()
@@ -387,6 +401,8 @@ class NeighborDiscoveryProtocol:
                 if self.all_neighbors_discovered:
                     self._update_routing_table()
                     self.lsa_sender.forward_lsa(lsa, sender_ip)
+
+                self._save_convergence_data()
                     
         except Exception as e:
             print(f"[{self.container_name}] LSA processing error: {str(e)}")
@@ -519,6 +535,19 @@ class NeighborDiscoveryProtocol:
         self.socket.close()
         print(f"[{self.container_name}] Service stopped")
 
+    def _save_convergence_data(self):
+        """Salva os dados de convergência parcial no arquivo compartilhado"""
+        try:
+            os.makedirs("/shared_data", exist_ok=True)
+            with open("/shared_data/convergence_data.txt", "a") as f:
+                for timestamp, num_routers in self.lsdb.convergence_data:
+                    f.write(f"{self.container_name} {timestamp:.2f} {num_routers}\n")
+            # Limpa os dados após salvar
+            self.lsdb.convergence_data = []
+        except Exception as e:
+            print(f"[{self.container_name}] Error saving convergence data: {str(e)}")
+   
+    
 if __name__ == "__main__":
     print("Starting Neighbor Discovery Protocol...")
     ndp = NeighborDiscoveryProtocol()
