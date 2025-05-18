@@ -43,10 +43,13 @@ class LSDB:
             self.db[origin] = normalized
             self._rebuild_topology()
             quantidade_routers = len(self.db)
-            # Registra dados de convergência parcial
-            current_time = time.time() - self.start_time
-            num_routers = len(self.db)
-            self.convergence_data.append((current_time, num_routers))
+
+            if(quantidade_routers > self.quantidade_routers):
+                self.quantidade_routers = quantidade_routers
+                print(f"[{self.router_name}] Updated LSDB with {quantidade_routers} routers")
+                current_time = time.time() - self.start_time
+                num_routers = len(self.db)
+                self.convergence_data.append((current_time, num_routers))
             return True
         return False
     
@@ -538,10 +541,11 @@ class NeighborDiscoveryProtocol:
     def _save_convergence_data(self):
         """Salva os dados de convergência parcial no arquivo compartilhado"""
         try:
-            os.makedirs("/shared_data", exist_ok=True)
-            with open("/shared_data/convergence_data.txt", "a") as f:
+            caminho = "/shared_data/testesConvergencia"
+            os.makedirs(caminho, exist_ok=True)
+            with open(f"{caminho}/convergence_data.txt", "a") as f:
                 for timestamp, num_routers in self.lsdb.convergence_data:
-                    f.write(f"{self.container_name} {timestamp:.2f} {num_routers}\n")
+                    f.write(f" Roteador : {self.container_name}  Tempo : {timestamp:.2f}  Roteadores Descobertos : {num_routers}\n")
             # Limpa os dados após salvar
             self.lsdb.convergence_data = []
         except Exception as e:
