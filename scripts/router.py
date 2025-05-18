@@ -316,6 +316,10 @@ class NeighborDiscoveryProtocol:
                 parts = line.strip().split()
                 if len(parts) >= 4 and not parts[1].startswith('lo'):
                     ip = parts[3].split('/')[0]
+                    if ip.startswith("192.168"):
+                    # Converte para a rede /24
+                        segmentos = ip.split(".")
+                        ip = f"{segmentos[0]}.{segmentos[1]}.{segmentos[2]}.0/24"
                     ips.append(ip)
             return ips
         except Exception as e:
@@ -463,9 +467,6 @@ class NeighborDiscoveryProtocol:
         """Aplica as rotas calculadas no sistema operacional"""
         print(f"[{self.container_name}] Applying system routes...")
         
-        # Limpa rotas antigas
-        self._cleanup_old_routes()
-        
         with self.lock:
             neighbors_ips = dict(self.neighbors)
             routing_table = dict(self.routing_table)
@@ -494,26 +495,6 @@ class NeighborDiscoveryProtocol:
                     print(f"[{self.container_name}] Failed to add route {dest_ip}: {str(e)}")
         
         print(f"[{self.container_name}] Successfully applied {success} routes")
-
-    def _cleanup_old_routes(self):
-        """Remove rotas antigas gerenciadas por este roteador"""
-        current_routes = self._get_current_routes()
-        
-        for route in current_routes:
-            try:
-                if not any(route.startswith(p) for p in ("10.0.0.", "192.168.")):
-                    continue
-                    
-                dest = route.split()[0]
-                subprocess.run(
-                    ["ip", "route", "del", dest],
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
-                )
-                print(f"[{self.container_name}] Removed old route: {dest}")
-            except Exception as e:
-                print(f"[{self.container_name}] Error removing route: {str(e)}")
 
     def _get_current_routes(self) -> List[str]:
         """Obtém as rotas atuais do sistema"""
