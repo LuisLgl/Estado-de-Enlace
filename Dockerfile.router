@@ -11,14 +11,21 @@ RUN apt-get update && apt-get install -y \
   traceroute \
   && rm -rf /var/lib/apt/lists/*
 
+RUN pip install pyyaml
+
 # Define o diretório onde os scripts estarão
 WORKDIR /scripts
 
 # Copia os scripts da máquina local para o container
 COPY ./scripts /scripts
 
+COPY ../docker-compose.yml /scripts/docker-compose.yml
+
 # Instala o psutil
 RUN pip install --no-cache-dir psutil
+
+# Dá permissão de leitura para o docker-compose.yml
+RUN chmod 644 /scripts/docker-compose.yml
 
 # Comando para rodar o script router.py ao iniciar o container
 CMD ["python3", "/scripts/router.py"]

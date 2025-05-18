@@ -68,7 +68,7 @@ class LSDB:
                 self.topology[neighbor][router] = cost  # Links são bidirecionais
 
     def calculate_routing_table(self, local_neighbors: Dict[str, str]) -> Dict[str, Tuple[str, int]]:
-        """Calcula a tabela de roteamento usando Dijkstra, incluindo rotas indiretas mais curtas."""
+        """Calcula a tabela de roteamento usando Dijkstra"""
         if self.router_name not in self.topology:
             return {}
 
@@ -93,17 +93,17 @@ class LSDB:
         for dest in self.topology:
             if dest == self.router_name or distances[dest] == float('inf'):
                 continue
-            
-            # Encontra o next hop no caminho mais curto
+                
             next_hop = dest
             while previous[next_hop] != self.router_name and previous[next_hop] is not None:
                 next_hop = previous[next_hop]
             
-            # Aqui removemos a restrição de que next_hop seja um vizinho direto.
-            routing_table[dest] = (next_hop, distances[dest])
+            if next_hop in local_neighbors:
+                routing_table[dest] = (next_hop, distances[dest])
+            else:
+                print(f"Route to {dest} discarded - next hop {next_hop} not a direct neighbor")
         
         return routing_table
-
 
     def get_router_ips(self, router_name: str) -> List[str]:
         """Retorna todos os IPs conhecidos para um roteador"""
