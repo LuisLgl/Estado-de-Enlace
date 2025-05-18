@@ -47,10 +47,10 @@ for origem in "${roteadores[@]}"; do
     fi
     printf "Pingando %-15s (%-8s)... " "$destino_ip" "$destino_nome"
     if docker exec "$origem" ping -c 1 -W 1 "$destino_ip" &> /dev/null; then
-      echo ""
+      echo "Ping bem-sucedido!"
       ((success++))
     else
-      echo "❌"
+      echo "Ping falhou!"
       ((fail++))
     fi
   done

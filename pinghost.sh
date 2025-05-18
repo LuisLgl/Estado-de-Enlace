@@ -49,12 +49,12 @@ for origem in "${hosts[@]}"; do
     if [[ "$origem" == "$destino_nome" ]]; then
       continue
     fi
-    printf "Pingando de %-15s para (%-8s)... " "$destino_ip" "$destino_nome"
+    printf "Pingando de %-15s (%-8s)... " "$destino_ip" "$destino_nome"
     if docker exec "$origem" ping -c 1 -W 1 "$destino_ip" &> /dev/null; then
-      echo "Ping bem-sucedido!"
+      echo "  Ping bem-sucedido!"
       ((success++))
     else
-      echo " Ping falhou! "
+      echo "  Ping falhou! "
       ((fail++))
     fi
   done

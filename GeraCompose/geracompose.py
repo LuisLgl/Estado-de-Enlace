@@ -129,4 +129,4 @@ def gerar_docker_compose(caminho_csv, caminho_saida="docker-compose.yml"):
     print(f"Docker Compose salvo em: {caminho_saida}")
 
 if __name__ == '__main__':
-    gerar_docker_compose("CsvImg/Csv5.csv", "docker-compose.yml")
+    gerar_docker_compose("CsvImg/Csv20.csv", "docker-compose.yml")
