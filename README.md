@@ -88,5 +88,62 @@ Esses dados são armazenados em relatórios dentro da pasta `Scripts/TesteConver
 
 ---
 
+## 🔎 **Escolha dos Protocolos**
+
+Para a implementação da rede de Petri simulando o protocolo de estado de enlace (Link-State), foram selecionados os seguintes protocolos: **UDP**, **IP** e o método de cálculo de rotas com **Dijkstra**. A escolha se deu pelos seguintes motivos:
+
+1. **UDP (User Datagram Protocol)**:
+
+   * Utilizado para comunicação entre os roteadores no processo de descoberta de vizinhos (HELLO) e na troca de informações de estado de enlace (LSA).
+   * O UDP foi escolhido por ser um protocolo de transporte leve, sem estabelecimento de conexão, o que o torna ideal para transmissões rápidas e com baixo overhead, características importantes para atualizações frequentes de tabelas de roteamento.
+   * Permite o uso de **Broadcast** e **Multicast**, facilitando a disseminação de mensagens para múltiplos roteadores ao mesmo tempo.
+
+2. **IP (Internet Protocol)**:
+
+   * Responsável por endereçar e rotear os pacotes entre os roteadores.
+   * A escolha do protocolo IP se justifica pela necessidade de endereçamento único para cada roteador, permitindo a identificação clara de origem e destino das mensagens de estado de enlace.
+   * Além disso, as rotas geradas pelo algoritmo de Dijkstra são aplicadas diretamente nas tabelas de roteamento, que utilizam o IP como referência.
+
+3. **Algoritmo de Dijkstra**:
+
+   * Utilizado para calcular os menores caminhos (rotas mais curtas) entre os roteadores com base nos custos de enlace divulgados nos pacotes LSA.
+   * É um algoritmo eficiente e bem consolidado para esse tipo de aplicação, garantindo a seleção da rota de menor custo para cada destino.
+
+---
+
+## 🌐 **Geração da Topologia de Rede**
+
+A topologia da rede é gerada de forma **aleatória e parcialmente conectada** através do script `geragrafo.py`. Esse script utiliza a biblioteca **NetworkX** para modelar os nós e as conexões (arestas) entre eles. O processo ocorre em algumas etapas principais:
+
+---
+
+### 🔹 **1️⃣ Geração dos Nós (Roteadores)**
+
+Os roteadores são representados por nós no grafo. Eles são nomeados sequencialmente como `r1`, `r2`, `r3`, etc. O número total de roteadores é definido pela variável `quant_roteadores`.
+
+---
+
+### 🔹 **2️⃣ Criação das Conexões (Enlaces)**
+
+As conexões entre os roteadores são estabelecidas com uma probabilidade definida por `prob_conexao`. Para cada par de nós `(i, j)`, um valor aleatório é gerado. Se esse valor for menor que a probabilidade definida, é criada uma aresta entre esses nós, representando um enlace com um peso (custo) aleatório entre `peso_min` e `peso_max`.
+
+---
+
+### 🔹 **3️⃣ Verificação de Conectividade**
+
+Após a criação das arestas, é feita uma verificação para garantir que o grafo é **conexo** — ou seja, todos os roteadores conseguem se comunicar de alguma forma, direta ou indiretamente.
+Caso o grafo não seja conexo, novas arestas são criadas aleatoriamente até que todos os nós estejam acessíveis uns aos outros.
+
+---
+
+### 🔹 **4️⃣ Salvamento da Topologia**
+
+Ao final, o grafo é salvo de duas maneiras:
+
+1. **Imagem PNG** representando a topologia gráfica dos roteadores e suas conexões.
+2. **Arquivo CSV** contendo a lista de enlaces (origem, destino e peso), utilizado para gerar o arquivo `docker-compose.yml` com a configuração dos containers.
+
+---
+
 Pronto! Agora sua topologia está em execução e você pode validar os roteamentos, testar comunicação e monitorar convergência de forma prática e eficiente.
 ""
