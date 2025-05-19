@@ -1,36 +1,92 @@
-![image](https://github.com/user-attachments/assets/c038116d-47d5-41cf-8c50-adba903e7b65)# 🕸️ Rede de Petri - Trabalho de Redes de Computadores 2  
-**Implementação de um Algoritmo de Estado de Enlace usando Docker e Python**  
+""# 🕸️ Rede de Petri - Trabalho de Redes de Computadores 2
+**Implementação de um Algoritmo de Estado de Enlace usando Docker e Python**
 
-## 🛠️ Pré-requisitos  
-Antes de executar o projeto, certifique-se de ter instalado: 
+---
 
-Docker Compose 
+## 🛠️ **Pré-requisitos**
 
-Phyton 
+Antes de executar o projeto, certifique-se de ter os seguintes itens instalados:
 
-## Organização do Código 
+* Docker Compose
+* Python
+* Git Bash
 
-O projeto é dividido em :
+---
 
-Descoberta de Vizinhos (HELLO) → UDP (Broadcast/Multicast)
+## 📂 **Organização do Projeto**
 
-Divulgação de Estado de Enlace (LSA) → UDP (Unicast para vizinhos)
+O projeto está estruturado nos seguintes componentes:
 
-Banco de Dados de Estado de Enlace (LSDB) → Armazenamento local (estrutura de dados em memória)
+1. **Descoberta de Vizinhos (HELLO)**
 
-Cálculo de Rotas (Dijkstra) → Algoritmo local (processamento interno)
+   * Comunicação via **UDP (Broadcast/Multicast)** para identificar roteadores vizinhos.
 
-Aplicação de Rotas (ip route) → Comandos do sistema (modificação da tabela de roteamento via iproute2)
+2. **Divulgação de Estado de Enlace (LSA)**
 
-## Como executar
+   * Envio de informações de enlaces através de **UDP (Unicast para vizinhos)**.
 
-Primeiro precisamos criar a topologia aleatória que é moldada a partir da quantidade de roteadores ao executar o arquivo gera grafo na pasta GeraTopologia, após isso serão gerados os grafo em Csv e a imagem da topologia criada em Png na pasta CsvImg. Após isso, devemos executar o geracompose na pasta GeraTopologia, dando o caminho do csv gerado na pasta CsvImg, e a partir disso o docker-compose.yml será gerado na principal do projeto.
+3. **Banco de Dados de Estado de Enlace (LSDB)**
 
-A partir disso, crie o conteiner com o comando docker compose build
+   * Armazenamento local das informações de enlace em uma estrutura de dados em memória.
 
-Depois disso, execute o conteiner com o docker compose up
+4. **Cálculo de Rotas (Dijkstra)**
 
-Os conteiners estarão em execução
+   * Processamento interno para cálculo das melhores rotas.
 
+5. **Aplicação de Rotas (ip route)**
 
+   * Modificação da tabela de roteamento local utilizando comandos do sistema com `iproute2`.
 
+---
+
+## 🚀 **Como Executar**
+
+1️⃣ - Primeiro, é necessário criar a topologia aleatória:
+
+* Acesse a pasta `GeraTopologia`.
+* Execute o arquivo `geragrafo.py`.
+* Será gerado um grafo em formato CSV e uma imagem PNG representando a topologia na pasta `CsvImg`.
+
+2️⃣ - Em seguida, gere o arquivo `docker-compose.yml`:
+
+* Na pasta `GeraTopologia`, execute o script `geracompose.py`, informando o caminho do arquivo CSV gerado.
+* O arquivo Docker Compose será criado na raiz do projeto.
+
+3️⃣ - Construa os containers Docker:
+
+```bash
+docker compose build
+```
+
+4️⃣ - Inicie os containers:
+
+```bash
+docker compose up
+```
+
+---
+
+## ✅ **Testes Disponíveis**
+
+Com os containers em execução, é possível realizar os seguintes testes:
+
+* **Ping entre roteadores e hosts:**
+
+  * Acesse o Git Bash (no Windows).
+
+  ```bash
+  ./pinghost.sh
+  ./pingrouter.sh
+  ```
+
+---
+
+## 📈 **Testes de Convergência**
+
+Os tempos de convergência da rede são calculados automaticamente ao iniciar os containers.
+Esses dados são armazenados em relatórios dentro da pasta `Scripts/TesteConvergencia`, sendo baseados na descoberta de roteadores na topologia.
+
+---
+
+Pronto! Agora sua topologia está em execução e você pode validar os roteamentos, testar comunicação e monitorar convergência de forma prática e eficiente.
+""
