@@ -211,7 +211,7 @@ class HelloSender:
     def stop(self):
 
         """Para o thread de envio de mensagens HELLO."""
-
+        
         if self.running:
             self.running = False
             if self.thread:
@@ -263,7 +263,7 @@ class LSASender:
     
     def __init__(self, ndp: 'NeighborDiscoveryProtocol'):
 
-         """
+        """
         Inicializa o LSASender.
         
         Args:
@@ -287,7 +287,7 @@ class LSASender:
 
     def stop(self):
 
-         """Para o thread de envio de LSAs."""
+        """Para o thread de envio de LSAs."""
 
         if self.running:
             self.running = False
@@ -346,7 +346,7 @@ class LSASender:
 
     def _send_to_all(self, lsa: Dict):
         
-         """
+        """
         Envia um LSA para todos os vizinhos conhecidos.
         
         Args:
@@ -459,9 +459,9 @@ class NeighborDiscoveryProtocol:
 
     def _get_interfaces_and_ips(self) -> List[str]:
         
-         """
+        """
         Obtém os IPs das interfaces de rede do container.
-        
+    
         Returns:
             List[str]: Lista de endereços IP das interfaces.
         """
