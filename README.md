@@ -42,6 +42,47 @@ O projeto está estruturado nos seguintes componentes:
 ## 🚀 **Como Executar**
 
 1️⃣ - Primeiro, é necessário criar a topologia aleatória:
+* Caso possua as bibliotecas localizadas no `requirements.txt` nas devidas versões você pode continuar.
+* Caso não você deve configurar o ambiente de execução, ou caso deseje apenas instalar as versões com :
+
+# Apenas instalar as bibliotecas no sistema
+```bash
+pip install -r requirements.txt
+```
+
+# Caso deseje configurar o ambiente
+
+* Crie o ambiente
+```bash
+python -m venv .venv
+```
+
+* Execute o ambiente
+
+```bash
+.\.venv\Scripts\Activate.ps1
+```
+* Instale as dependências
+
+```bash
+pip install -r requirements.txt
+```
+
+*Execute no terminal os scripts
+
+```bash
+python GeraTopologia\geragrafo.py
+```
+
+```bash
+python GeraTopologia\geragrafo.py
+```
+
+
+Pronto, caso esteja em um ambiente lembre-se de executar os proximos passos a partir do terminal do ambiente instalado.
+
+python GeraTopologia\geragrafo.py  
+python GeraTopologia\geragrafo.py
 
 * Acesse a pasta `GeraTopologia`.
 * Execute o arquivo `geragrafo.py`.
