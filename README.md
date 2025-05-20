@@ -39,28 +39,50 @@ O projeto está estruturado nos seguintes componentes:
 
 ---
 
-## 🚀 **Como Executar**
 
-1️⃣ - Primeiro, é necessário criar a topologia aleatória:
+## 🚀 Como Executar
 
-* Acesse a pasta `GeraTopologia`.
-* Execute o arquivo `geragrafo.py`.
-* Será gerado um grafo em formato CSV e uma imagem PNG representando a topologia na pasta `CsvImg`.
+### 1️⃣ Geração da Topologia Aleatória
 
-2️⃣ - Em seguida, gere o arquivo `docker-compose.yml`:
+#### 🔹 Opção 1: Instalação global (direto no sistema)
 
-* Na pasta `GeraTopologia`, execute o script `geracompose.py`, informando o caminho do arquivo CSV gerado.
-* O arquivo Docker Compose será criado na raiz do projeto.
+```bash
+pip install -r requirements.txt
+```
+- Execute manualmente o ``geragrafo.py``.
 
-3️⃣ - Construa os containers Docker:
+- Um grafo em formato CSV e uma imagem PNG serão gerados na pasta `CsvImg`.
+
+- Execute manualmente o ``geracompose.py``.
+
+- O arquivo `docker-compose.yml` será criado na raiz do projeto.
+
+#### 🔹 Opção 2: Usando ambiente virtual
+
+
+```bash
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+```bash
+python GeraTopologia\geragrafo.py
+```
+
+- Um grafo em formato CSV e uma imagem PNG serão gerados na pasta `CsvImg`.
+
+```bash
+python GeraTopologia\geracompose.py
+```
+
+- O arquivo `docker-compose.yml` será criado na raiz do projeto.
+---
+
+### 2️⃣ Construção e Execução dos Containers
 
 ```bash
 docker compose build
-```
-
-4️⃣ - Inicie os containers:
-
-```bash
 docker compose up
 ```
 
