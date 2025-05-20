@@ -2,10 +2,12 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import random
 import csv
-import os  # Adicionado para manipulação de diretórios
+import os  
+
 
 # Função para gerar um grafo parcialmente conectado
 def gerar_grafo(quant_nos: int, prob_conexao: float = 0.3, peso_min: int = 1, peso_max: int = 10):
+    
     grafo = nx.Graph()
 
     # Gera e adiciona os nós

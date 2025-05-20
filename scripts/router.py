@@ -1,3 +1,4 @@
+
 import time
 import psutil
 import socket
@@ -11,10 +12,28 @@ from collections import defaultdict
 import heapq
 from typing import Dict, List, Tuple, Optional
 
+"""
+Implementação de um protocolo de descoberta de vizinhos e roteamento link-state.
+
+Este módulo implementa um protocolo distribuído para:
+1. Descoberta de vizinhos através de mensagens HELLO
+2. Troca de informações de topologia via LSAs (Link State Advertisements)
+3. Cálculo de rotas usando o algoritmo Dijkstra
+4. Aplicação de rotas no sistema operacional
+"""
+
 class LSDB:
-    """Link State Database com tratamento completo de atualizações"""
+
+    """Link State Database que armazena e gerencia o estado dos links da rede."""
     
     def __init__(self, router_name: str):
+
+        """Inicializa a LSDB para um roteador específico.
+        
+        Args:
+            router_name (str): Nome do roteador dono desta LSDB.
+        """
+
         self.router_name = router_name
         self.db: Dict[str, Dict] = {}
         self.topology: Dict[str, Dict[str, int]] = defaultdict(dict)
@@ -24,7 +43,17 @@ class LSDB:
         self.quantidade_routers = 0
         
     def update(self, lsa: Dict) -> bool:
-        """Atualiza o LSDB com um novo LSA, retorna True se houve mudança"""
+
+        """
+        Atualiza o LSDB com um novo Link State Advertisement (LSA).
+        
+        Args:
+            lsa (Dict): Dicionário contendo o LSA recebido.
+            
+        Returns:
+            bool: True se o LSA foi novo e atualizou o banco, False caso contrário.
+        """
+
         origin = lsa.get('origin') or lsa.get('router_id')
         sequence = lsa.get('sequence') or lsa.get('sequence_number')
         
@@ -54,7 +83,17 @@ class LSDB:
         return False
     
     def _normalize_neighbors(self, lsa: Dict) -> Dict:
-        """Padroniza o formato dos vizinhos para {'router': {'ip': str, 'cost': int}}"""
+        
+        """
+        Padroniza o formato dos vizinhos no LSA recebido.
+        
+        Args:
+            lsa (Dict): LSA recebido com vizinhos em formato variável.
+            
+        Returns:
+            Dict: Vizinhos no formato padronizado {'router': {'ip': str, 'cost': int}}.
+        """
+
         neighbors = {}
         
         if 'neighbors' in lsa and isinstance(lsa['neighbors'], dict):
@@ -70,7 +109,9 @@ class LSDB:
         return neighbors
     
     def _rebuild_topology(self):
-        """Reconstrói a topologia completa a partir dos LSAs"""
+
+        """Reconstrói a topologia completa da rede a partir dos LSAs armazenados."""
+
         self.topology = defaultdict(dict)
         for router, lsa in self.db.items():
             for neighbor, data in lsa['neighbors'].items():
@@ -79,7 +120,17 @@ class LSDB:
                 self.topology[neighbor][router] = cost  # Links são bidirecionais
 
     def calculate_routing_table(self, local_neighbors: Dict[str, str]) -> Dict[str, Tuple[str, int]]:
-        """Calcula a tabela de roteamento usando Dijkstra, incluindo rotas indiretas mais curtas."""
+        
+        """
+        Calcula a tabela de roteamento usando o algoritmo de Dijkstra.
+        
+        Args:
+            local_neighbors (Dict[str, str]): Vizinhos diretos {nome: ip}.
+            
+        Returns:
+            Dict[str, Tuple[str, int]]: Tabela de roteamento {destino: (próximo_salto, custo)}.
+        """
+
         if self.router_name not in self.topology:
             return {}
 
@@ -117,18 +168,40 @@ class LSDB:
 
 
     def get_router_ips(self, router_name: str) -> List[str]:
-        """Retorna todos os IPs conhecidos para um roteador"""
+        
+        """
+        Obtém todos os IPs conhecidos para um roteador específico.
+        
+        Args:
+            router_name (str): Nome do roteador a consultar.
+            
+        Returns:
+            List[str]: Lista de endereços IP associados ao roteador.
+        """
+
         return self.db.get(router_name, {}).get('addresses', [])
 
 class HelloSender:
+
     """Responsável pelo envio periódico de mensagens HELLO"""
     
     def __init__(self, ndp: 'NeighborDiscoveryProtocol'):
+
+        """
+        Inicializa o HelloSender.
+        
+        Args:
+            ndp (NeighborDiscoveryProtocol): Instância do protocolo principal.
+        """
+
         self.ndp = ndp
         self.running = False
         self.thread = None
 
     def start(self):
+
+        """Inicia o thread de envio periódico de mensagens HELLO."""
+
         if not self.running:
             self.running = True
             self.thread = threading.Thread(target=self._send_hello_loop, daemon=True)
@@ -136,6 +209,9 @@ class HelloSender:
             print(f"[{self.ndp.container_name}] HELLO sender started")
 
     def stop(self):
+
+        """Para o thread de envio de mensagens HELLO."""
+
         if self.running:
             self.running = False
             if self.thread:
@@ -143,7 +219,9 @@ class HelloSender:
             print(f"[{self.ndp.container_name}] HELLO sender stopped")
 
     def _send_hello_loop(self):
-        """Loop principal de envio de HELLOs"""
+        
+        """Loop principal para envio periódico de mensagens HELLO."""
+
         while self.running:
             try:
                 for ip in self.ndp.interface_ips:
@@ -156,7 +234,14 @@ class HelloSender:
                 time.sleep(1)
 
     def _send_hello(self, ip: str):
-        """Envia uma mensagem HELLO para o endereço de broadcast"""
+        
+        """
+        Envia uma mensagem HELLO para o endereço de broadcast.
+        
+        Args:
+            ip (str): Endereço IP de origem para a mensagem HELLO.
+        """
+
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -173,15 +258,27 @@ class HelloSender:
             print(f"[{self.ndp.container_name}] HELLO send error: {str(e)}")
 
 class LSASender:
+
     """Responsável pelo envio e encaminhamento de LSAs"""
     
     def __init__(self, ndp: 'NeighborDiscoveryProtocol'):
+
+         """
+        Inicializa o LSASender.
+        
+        Args:
+            ndp (NeighborDiscoveryProtocol): Instância do protocolo principal.
+        """
+
         self.ndp = ndp
         self.running = False
         self.thread = None
         self.lsa_sequence = 0
 
     def start(self):
+
+        """Inicia o thread de envio periódico de LSAs."""
+
         if not self.running:
             self.running = True
             self.thread = threading.Thread(target=self._send_lsa_loop, daemon=True)
@@ -189,6 +286,9 @@ class LSASender:
             print(f"[{self.ndp.container_name}] LSA sender started")
 
     def stop(self):
+
+         """Para o thread de envio de LSAs."""
+
         if self.running:
             self.running = False
             if self.thread:
@@ -196,11 +296,23 @@ class LSASender:
             print(f"[{self.ndp.container_name}] LSA sender stopped")
 
     def _get_link_cost(self, neighbor: str) -> int:
-        """Obtém o custo do link para um vizinho"""
+        
+        """
+        Obtém o custo do link para um vizinho específico.
+        
+        Args:
+            neighbor (str): Nome do roteador vizinho.
+            
+        Returns:
+            int: Custo do link para o vizinho.
+        """
+
         return self.ndp.get_link_cost_between(self.ndp.container_name, neighbor)
 
     def _send_lsa_loop(self):
-        """Loop principal de envio de LSAs"""
+
+        """Loop principal para envio periódico de LSAs."""
+
         while self.running:
             try:
                 self._send_lsa()
@@ -210,7 +322,9 @@ class LSASender:
                 time.sleep(1)
 
     def _send_lsa(self):
-        """Constrói e envia um LSA para todos os vizinhos"""
+        
+        """Constrói e envia um LSA contendo o estado atual dos links."""
+
         self.lsa_sequence += 1
         
         with self.ndp.lock:
@@ -231,7 +345,14 @@ class LSASender:
         self._send_to_all(lsa)
 
     def _send_to_all(self, lsa: Dict):
-        """Envia LSA para todos os vizinhos"""
+        
+         """
+        Envia um LSA para todos os vizinhos conhecidos.
+        
+        Args:
+            lsa (Dict): LSA a ser enviado.
+        """
+
         message = json.dumps(lsa)
         
         with self.ndp.lock:
@@ -242,7 +363,15 @@ class LSASender:
                     print(f"[{self.ndp.container_name}] LSA send error to {neighbor_ip}: {str(e)}")
 
     def forward_lsa(self, lsa: Dict, sender_ip: str):
-        """Encaminha LSA recebido para outros vizinhos"""
+        
+        """
+        Encaminha um LSA recebido para outros vizinhos (exceto o remetente).
+        
+        Args:
+            lsa (Dict): LSA recebido.
+            sender_ip (str): IP do remetente original.
+        """
+
         with self.ndp.lock:
             recipients = [ip for ip in self.ndp.neighbors.values() if ip != sender_ip]
         
@@ -254,29 +383,32 @@ class LSASender:
                 print(f"[{self.ndp.container_name}] LSA forward error to {ip}: {str(e)}")
 
 class NeighborDiscoveryProtocol:
-    """Implementação principal do protocolo de descoberta de vizinhos"""
+    
+    """Implementação principal do protocolo de descoberta de vizinhos e construção de tabelas de roteamento."""
     
     def __init__(self, container_name: str = "router", port: int = 5000):
+
+        """
+        Inicializa o protocolo.
+        
+        Args:
+            container_name (str): Nome do container/roteador. Default "router".
+            port (int): Porta UDP para comunicação. Default 5000.
+        """
+
         self.container_name = os.getenv("CONTAINER_NAME", container_name)
         self.port = port
-        
-        # Configuração de rede
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(('0.0.0.0', self.port))
         self.socket.settimeout(1)
-        
-        # Estruturas de dados
         self.neighbors: Dict[str, str] = {}  # {router_id: ip}
         self.interface_ips: List[str] = []
         self.lock = threading.Lock()
         self.last_seen: Dict[str, float] = {}
         self.all_neighbors_discovered = False
-        
-        # Componentes do protocolo
         self.lsdb = LSDB(self.container_name)
         self.routing_table: Dict[str, Tuple[str, int]] = {}  # {dest: (next_hop, cost)}
-        
         self.hello_sender = HelloSender(self)
         self.lsa_sender = LSASender(self)
         self.running = False
@@ -284,7 +416,18 @@ class NeighborDiscoveryProtocol:
 
 
     def get_link_cost_between(self, router1: str, router2: str) -> int:
-        """Obtém o custo do link a partir de variáveis de ambiente"""
+        
+        """
+        Obtém o custo do link entre dois roteadores a partir de variáveis de ambiente.
+        
+        Args:
+            router1 (str): Nome do primeiro roteador.
+            router2 (str): Nome do segundo roteador.
+            
+        Returns:
+            int: Custo do link entre os roteadores.
+        """
+
         cost = os.getenv(f"CUSTO_{router1}_{router2}_net")
         if cost is None:
             cost = os.getenv(f"CUSTO_{router2}_{router1}_net")
@@ -295,16 +438,14 @@ class NeighborDiscoveryProtocol:
         return int(cost) if cost is not None else 1
 
     def start(self):
-        """Inicia o protocolo"""
+        
+        """Inicia o protocolo e todos os seus componentes."""
+
         self.running = True
         self.interface_ips = self._get_interfaces_and_ips()
-
-        # Inicializa o arquivo de convergência
         self.converged = False
         self.convergence_start_time = None
         self.convergence_time = None
-
-        # Inicia threads
         self.hello_sender.start()
         threading.Thread(target=self._listen_loop, daemon=True).start()
         
@@ -317,7 +458,14 @@ class NeighborDiscoveryProtocol:
             self.stop()
 
     def _get_interfaces_and_ips(self) -> List[str]:
-        """Obtém os IPs das interfaces de rede"""
+        
+         """
+        Obtém os IPs das interfaces de rede do container.
+        
+        Returns:
+            List[str]: Lista de endereços IP das interfaces.
+        """
+
         try:
             result = subprocess.run(
                 ["ip", "-4", "-o", "addr", "show"],
@@ -344,7 +492,9 @@ class NeighborDiscoveryProtocol:
             return []
 
     def _listen_loop(self):
+
         """Loop principal para recebimento de mensagens"""
+
         print(f"[{self.container_name}] Listening on port {self.port}")
         
         while self.running:
@@ -367,7 +517,15 @@ class NeighborDiscoveryProtocol:
                 print(f"[{self.container_name}] Listen error: {str(e)}")
 
     def _process_hello(self, hello: Dict, sender_ip: str):
-        """Processa mensagem HELLO recebida"""
+        
+        """
+        Processa uma mensagem HELLO recebida.
+        
+        Args:
+            hello (Dict): Mensagem HELLO recebida.
+            sender_ip (str): IP do remetente.
+        """
+
         sender_id = hello.get('router_id')
         if not sender_id or sender_id == self.container_name:
             return
@@ -385,7 +543,14 @@ class NeighborDiscoveryProtocol:
                     self.lsa_sender.start()
 
     def _get_expected_neighbors(self) -> List[str]:
-        """Retorna os vizinhos esperados baseados nas variáveis de ambiente"""
+        
+        """
+        Obtém a lista de vizinhos esperados baseada em variáveis de ambiente.
+        
+        Returns:
+            List[str]: Nomes dos roteadores vizinhos esperados.
+        """
+
         neighbors = []
         for key in os.environ.keys():
             if key.startswith(f"CUSTO_{self.container_name}_") and "_net" in key:
@@ -396,7 +561,15 @@ class NeighborDiscoveryProtocol:
         return neighbors
 
     def _process_lsa(self, lsa: Dict, sender_ip: str):
-        """Processa LSA recebido"""
+        
+        """
+        Processa um LSA recebido.
+        
+        Args:
+            lsa (Dict): LSA recebido.
+            sender_ip (str): IP do remetente.
+        """
+
         try:
             if self.lsdb.update(lsa):
                 print(f"[{self.container_name}] Updated topology from {lsa.get('router_id')}")
@@ -411,7 +584,9 @@ class NeighborDiscoveryProtocol:
             print(f"[{self.container_name}] LSA processing error: {str(e)}")
 
     def _monitor_state(self):
+
         """Monitora e atualiza o estado do roteador"""
+
         with self.lock:
             current_neighbors = dict(self.neighbors)
             has_neighbors = len(current_neighbors) > 0
@@ -438,7 +613,9 @@ class NeighborDiscoveryProtocol:
             self._update_routing_table()
 
     def _update_own_lsa(self):
+
         """Atualiza o LSA próprio no LSDB"""
+
         with self.lock:
             neighbors = dict(self.neighbors)
         
@@ -454,7 +631,9 @@ class NeighborDiscoveryProtocol:
             self.lsdb.update(lsa)
 
     def _update_routing_table(self):
+
         """Recalcula e aplica a tabela de roteamento"""
+
         print(f"[{self.container_name}] Recalculating routing table...")
         
         with self.lock:
@@ -483,7 +662,9 @@ class NeighborDiscoveryProtocol:
         self._apply_routes_to_system()
 
     def _apply_routes_to_system(self):
+
         """Aplica as rotas calculadas no sistema operacional"""
+
         print(f"[{self.container_name}] Applying system routes...")
         
         with self.lock:
@@ -516,7 +697,14 @@ class NeighborDiscoveryProtocol:
         print(f"[{self.container_name}] Successfully applied {success} routes")
 
     def _get_current_routes(self) -> List[str]:
-        """Obtém as rotas atuais do sistema"""
+        
+        """
+        Obtém as rotas atualmente configuradas no sistema.
+        
+        Returns:
+            List[str]: Lista de rotas no formato do comando 'ip route'.
+        """
+
         try:
             result = subprocess.run(
                 ["ip", "route", "list"],
@@ -531,7 +719,9 @@ class NeighborDiscoveryProtocol:
             return []
 
     def stop(self):
+
         """Para o protocolo e limpa recursos"""
+
         self.running = False
         self.hello_sender.stop()
         self.lsa_sender.stop()
@@ -539,7 +729,9 @@ class NeighborDiscoveryProtocol:
         print(f"[{self.container_name}] Service stopped")
 
     def _save_convergence_data(self):
+
         """Salva os dados de convergência parcial no arquivo compartilhado"""
+
         try:
             caminho = "/shared_data/testesConvergencia"
             os.makedirs(caminho, exist_ok=True)
@@ -553,6 +745,13 @@ class NeighborDiscoveryProtocol:
    
     
 if __name__ == "__main__":
+
+    """
+    Ponto de entrada principal para execução do protocolo.
+    
+    Inicializa e executa o NeighborDiscoveryProtocol até interrupção.
+    """
+
     print("Starting Neighbor Discovery Protocol...")
     ndp = NeighborDiscoveryProtocol()
     try:
