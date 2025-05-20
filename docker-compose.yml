@@ -9,16 +9,13 @@ services:
     - ./scripts:/shared_data
     environment:
       CONTAINER_NAME: r1
-      CUSTO_r1_r2_net: '6'
-      CUSTO_r1_r4_net: '8'
-      CUSTO_r1_r5_net: '3'
+      CUSTO_r1_r2_net: '10'
+      CUSTO_r1_r7_net: '8'
     networks:
       r1_r2_net:
         ipv4_address: 10.10.1.2
-      r1_r4_net:
+      r1_r7_net:
         ipv4_address: 10.10.2.2
-      r1_r5_net:
-        ipv4_address: 10.10.3.2
       r1_hosts_net:
         ipv4_address: 192.168.6.2
     cap_add:
@@ -56,13 +53,13 @@ services:
     - ./scripts:/shared_data
     environment:
       CONTAINER_NAME: r2
-      CUSTO_r1_r2_net: '6'
-      CUSTO_r2_r3_net: '10'
+      CUSTO_r1_r2_net: '10'
+      CUSTO_r2_r5_net: '6'
     networks:
       r1_r2_net:
         ipv4_address: 10.10.1.3
-      r2_r3_net:
-        ipv4_address: 10.10.4.2
+      r2_r5_net:
+        ipv4_address: 10.10.3.2
       r2_hosts_net:
         ipv4_address: 192.168.7.2
     cap_add:
@@ -100,10 +97,10 @@ services:
     - ./scripts:/shared_data
     environment:
       CONTAINER_NAME: r3
-      CUSTO_r2_r3_net: '10'
+      CUSTO_r3_r4_net: '3'
     networks:
-      r2_r3_net:
-        ipv4_address: 10.10.4.3
+      r3_r4_net:
+        ipv4_address: 10.10.4.2
       r3_hosts_net:
         ipv4_address: 192.168.8.2
     cap_add:
@@ -141,10 +138,16 @@ services:
     - ./scripts:/shared_data
     environment:
       CONTAINER_NAME: r4
-      CUSTO_r1_r4_net: '8'
+      CUSTO_r3_r4_net: '3'
+      CUSTO_r4_r6_net: '5'
+      CUSTO_r4_r7_net: '8'
     networks:
-      r1_r4_net:
-        ipv4_address: 10.10.2.3
+      r3_r4_net:
+        ipv4_address: 10.10.4.3
+      r4_r6_net:
+        ipv4_address: 10.10.5.2
+      r4_r7_net:
+        ipv4_address: 10.10.6.2
       r4_hosts_net:
         ipv4_address: 192.168.9.2
     cap_add:
@@ -182,10 +185,16 @@ services:
     - ./scripts:/shared_data
     environment:
       CONTAINER_NAME: r5
-      CUSTO_r1_r5_net: '3'
+      CUSTO_r2_r5_net: '6'
+      CUSTO_r5_r6_net: '7'
+      CUSTO_r5_r7_net: '9'
     networks:
-      r1_r5_net:
+      r2_r5_net:
         ipv4_address: 10.10.3.3
+      r5_r6_net:
+        ipv4_address: 10.10.7.2
+      r5_r7_net:
+        ipv4_address: 10.10.8.2
       r5_hosts_net:
         ipv4_address: 192.168.10.2
     cap_add:
@@ -214,6 +223,97 @@ services:
         ipv4_address: 192.168.10.4
     cap_add:
     - NET_ADMIN
+  r6:
+    build:
+      context: .
+      dockerfile: Dockerfile.router
+    container_name: r6
+    volumes:
+    - ./scripts:/shared_data
+    environment:
+      CONTAINER_NAME: r6
+      CUSTO_r4_r6_net: '5'
+      CUSTO_r5_r6_net: '7'
+    networks:
+      r4_r6_net:
+        ipv4_address: 10.10.5.3
+      r5_r6_net:
+        ipv4_address: 10.10.7.3
+      r6_hosts_net:
+        ipv4_address: 192.168.11.2
+    cap_add:
+    - NET_ADMIN
+  r6_h1:
+    build:
+      context: .
+      dockerfile: Dockerfile.host
+    container_name: r6_h1
+    volumes:
+    - ./scripts:/scripts
+    networks:
+      r6_hosts_net:
+        ipv4_address: 192.168.11.3
+    cap_add:
+    - NET_ADMIN
+  r6_h2:
+    build:
+      context: .
+      dockerfile: Dockerfile.host
+    container_name: r6_h2
+    volumes:
+    - ./scripts:/scripts
+    networks:
+      r6_hosts_net:
+        ipv4_address: 192.168.11.4
+    cap_add:
+    - NET_ADMIN
+  r7:
+    build:
+      context: .
+      dockerfile: Dockerfile.router
+    container_name: r7
+    volumes:
+    - ./scripts:/shared_data
+    environment:
+      CONTAINER_NAME: r7
+      CUSTO_r1_r7_net: '8'
+      CUSTO_r4_r7_net: '8'
+      CUSTO_r5_r7_net: '9'
+    networks:
+      r1_r7_net:
+        ipv4_address: 10.10.2.3
+      r4_r7_net:
+        ipv4_address: 10.10.6.3
+      r5_r7_net:
+        ipv4_address: 10.10.8.3
+      r7_hosts_net:
+        ipv4_address: 192.168.12.2
+    cap_add:
+    - NET_ADMIN
+  r7_h1:
+    build:
+      context: .
+      dockerfile: Dockerfile.host
+    container_name: r7_h1
+    volumes:
+    - ./scripts:/scripts
+    networks:
+      r7_hosts_net:
+        ipv4_address: 192.168.12.3
+    cap_add:
+    - NET_ADMIN
+  r7_h2:
+    build:
+      context: .
+      dockerfile: Dockerfile.host
+    container_name: r7_h2
+    volumes:
+    - ./scripts:/scripts
+    networks:
+      r7_hosts_net:
+        ipv4_address: 192.168.12.4
+    cap_add:
+    - NET_ADMIN
 networks:
   r1_hosts_net:
     driver: bridge
@@ -240,23 +340,53 @@ networks:
     ipam:
       config:
       - subnet: 192.168.10.0/24
+  r6_hosts_net:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 192.168.11.0/24
+  r7_hosts_net:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 192.168.12.0/24
   r1_r2_net:
     driver: bridge
     ipam:
       config:
       - subnet: 10.10.1.0/24
-  r1_r4_net:
+  r1_r7_net:
     driver: bridge
     ipam:
       config:
       - subnet: 10.10.2.0/24
-  r1_r5_net:
+  r2_r5_net:
     driver: bridge
     ipam:
       config:
       - subnet: 10.10.3.0/24
-  r2_r3_net:
+  r3_r4_net:
     driver: bridge
     ipam:
       config:
       - subnet: 10.10.4.0/24
+  r4_r6_net:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 10.10.5.0/24
+  r4_r7_net:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 10.10.6.0/24
+  r5_r6_net:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 10.10.7.0/24
+  r5_r7_net:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 10.10.8.0/24

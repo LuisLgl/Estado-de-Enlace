@@ -1,0 +1,9 @@
+no_origem,no_destino,peso
+r1,r2,10
+r1,r7,8
+r2,r5,6
+r3,r4,3
+r4,r6,5
+r4,r7,8
+r5,r6,7
+r5,r7,9

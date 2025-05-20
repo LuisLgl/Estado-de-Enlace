@@ -62,12 +62,11 @@ def salvar_grafo_csv(grafo: nx.Graph, caminho_csv: str = "grafo.csv"):
 
 if (__name__ == '__main__'):
 
-    quant_roteadores = 5
+    quant_roteadores = 7
     # Cria os diretórios se não existirem
     os.makedirs("CsvImg", exist_ok=True)
-    caminho_base = "CsvImg/Csv5"
+    caminho_base = "CsvImg/Csv7"
    
-w
     grafo = gerar_grafo(quant_roteadores)
     salvar_grafo_imagem(grafo, caminho_imagem=f"{caminho_base}.png")
     salvar_grafo_csv(grafo, caminho_csv=f"{caminho_base}.csv")
